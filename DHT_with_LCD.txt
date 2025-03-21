@@ -1,36 +1,42 @@
-DHT with LCD
-import RPi.GPIO as g
-from time import sleep as s
-from RPLCD import *
-from RPLCD.gpio import CharLCD
+# Interfacing DHT Sensor with LCD Screen using Raspberry Pi
 
-g.cleanup()
-g.setwarnings( False)
-g.setmode( g.BOARD)
-g.setup(35, g.IN)
-g.setup(33, g.OUT)
+from RPLCD.gpio import CharLCD  # Import LCD library
+import Adafruit_DHT  # Import DHT sensor library
+import RPi.GPIO as gpio  # Import GPIO library
+import time  # Import time library
 
-lcd = CharLCD( cols = 20,
-               rows = 2,
-               pin_rs = 7,
-               pin_e = 11,
-               pins_data = [ 40,38,36,32],
-               numbering_mode = g.BOARD)
+# GPIO setup
+gpio.setwarnings(False)  # Disable warnings
+gpio.setmode(gpio.BOARD)  # Use BOARD numbering mode
+
+# Initialize LCD
+lcd = CharLCD(cols=20, rows=2, pin_rs=35, pin_e=33, 
+              pins_data=[40, 38, 36, 32], numbering_mode=gpio.BOARD)
+
+# DHT sensor setup
+sensor = Adafruit_DHT.DHT11  # Define sensor type
+pin = 17  # GPIO pin connected to the DHT sensor
 
 try:
     while True:
-        state = g.input( 35)
-        if state == 0:
-            print( "Gas Detected!")
-            lcd.cursor_pos = (0,0)
-            lcd.write_string( "GASGAS")
-            g.output( 33, 1)
-        elif state == 1:
-            print( "No gas")
-            lcd.cursor_pos = (0,0)
-            lcd.write_string( "Chill")
-            g.output( 33, 0)
-        s(5)
+        # Read humidity and temperature
+        humidity, temperature = Adafruit_DHT.read_retry(sensor, pin)
+
+        if humidity is not None and temperature is not None:
+            print(f"Humidity: {humidity:.1f}%")
+            print(f"Temperature: {temperature:.1f}C")
+
+            lcd.clear()  # Clear LCD before writing new values
+            lcd.cursor_pos = (0, 0)
+            lcd.write_string(f"Temp: {temperature:.1f}C")
+            lcd.cursor_pos = (1, 0)
+            lcd.write_string(f"Humidity: {humidity:.1f}%")
+        else:
+            print("Failed to get reading. Try again!")
+
+        time.sleep(1)  # Wait for 1 second before next reading
+
 except KeyboardInterrupt:
+    print("\nExiting... Cleaning up GPIO")
     lcd.clear()
-    g.cleanup()
+    gpio.cleanup()
